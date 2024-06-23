@@ -1,2 +1,2 @@
 # PayFren
-A payment application
+A payment application created using the MERN stack.
