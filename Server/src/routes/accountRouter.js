@@ -1,6 +1,6 @@
 const express = require("express");
 const { authMiddleware } = require("../middleware");
-const { Account } = require("../database");
+const { User, Account } = require("../database");
 const { default: mongoose } = require("mongoose");
 
 const accountRouter = express.Router();
@@ -9,15 +9,17 @@ accountRouter.get("/balance", authMiddleware, async (req, res) => {
   const account = await Account.findOne({
     userId: req.userId,
   });
-  console.log(account);
   return res.status(200).json({ balance: account.balance });
 });
 
 accountRouter.post("/transaction", authMiddleware, async (req, res) => {
+  console.log("Received request for transaction");
   const session = await mongoose.startSession();
 
   session.startTransaction();
-  const { amount, receipient } = req.body;
+  const { amount, recipient } = req.body;
+
+  console.log(req.userId + " " + req.body.amount + " " + req.body.recipient);
 
   const account = await Account.findOne({
     userId: req.userId,
@@ -27,11 +29,15 @@ accountRouter.post("/transaction", authMiddleware, async (req, res) => {
     return res.status(400).json({ message: "Insufficient balance" });
   }
 
-  const receipientAccount = await Account.findOne({
-    userId: receipient,
+  const recipientAccountDetails = await User.findOne({
+    userName: recipient,
   });
 
-  if (!receipientAccount) {
+  const recipientAccount = await Account.findOne({
+    userId: recipientAccountDetails._id,
+  });
+
+  if (!recipientAccount) {
     return res.status(411).json({ message: "Invalid account" });
   }
 
@@ -48,7 +54,7 @@ accountRouter.post("/transaction", authMiddleware, async (req, res) => {
 
   await Account.updateOne(
     {
-      userId: receipientAccount,
+      userId: recipientAccount,
     },
     {
       $inc: {
@@ -58,7 +64,7 @@ accountRouter.post("/transaction", authMiddleware, async (req, res) => {
   );
 
   session.commitTransaction();
-
+  console.log("Transaction completed successfully");
   res.status(200).json({ message: "Transaction successfull" });
 });
 

@@ -27,6 +27,7 @@ const updateSchema = zod.object({
 });
 
 userRouter.post("/signup", async (req, res) => {
+  console.log("Received signUp request");
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -63,6 +64,7 @@ userRouter.post("/signup", async (req, res) => {
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET);
     await session.commitTransaction();
+    console.log("Sign up successful");
     return res.status(200).json({ body: "User created successfully", token });
   } catch (err) {
     await session.abortTransaction();
@@ -73,6 +75,7 @@ userRouter.post("/signup", async (req, res) => {
 });
 
 userRouter.post("/signIn", async (req, res) => {
+  console.log("Received sign in request");
   try {
     const { success } = signInSchema.safeParse(req.body);
 
@@ -100,7 +103,7 @@ userRouter.post("/signIn", async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET);
-
+    console.log("Created token");
     return res.status(200).json({ token });
   } catch (err) {
     return res
@@ -109,7 +112,7 @@ userRouter.post("/signIn", async (req, res) => {
   }
 });
 
-userRouter.put("/", authMiddleware, async (req, res) => {
+userRouter.put("/update", authMiddleware, async (req, res) => {
   const { success } = updateSchema.safeParse(req.body);
 
   if (!success) {
@@ -128,7 +131,7 @@ userRouter.put("/", authMiddleware, async (req, res) => {
 });
 
 userRouter.get("/bulk", authMiddleware, async (req, res) => {
-  const users = await User.find({
+  let users = await User.find({
     $or: [
       {
         firstName: {
@@ -142,6 +145,8 @@ userRouter.get("/bulk", authMiddleware, async (req, res) => {
       },
     ],
   });
+
+  users = users.filter((user) => user._id != req.userId);
 
   res.json({
     users: users.map((user) => ({
